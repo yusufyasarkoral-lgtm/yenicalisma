@@ -1,0 +1,2 @@
+import {sqliteTable,text,real} from 'drizzle-orm/sqlite-core';
+export const quotes=sqliteTable('quotes',{id:text('id').primaryKey(),agency:text('agency').notNull(),customer:text('customer').notNull(),insurer:text('insurer').notNull(),branch:text('branch').notNull(),amount:real('amount').notNull(),status:text('status').notNull(),notes:text('notes').notNull().default(''),createdAt:text('createdAt').notNull()});
