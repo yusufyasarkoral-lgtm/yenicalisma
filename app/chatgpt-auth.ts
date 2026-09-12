@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { env } from "cloudflare:workers";
 
 export type ChatGPTUser = {
   userId: string;
@@ -23,9 +24,10 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const userId = requestHeaders.get(USER_ID_HEADER);
   const email = requestHeaders.get(USER_EMAIL_HEADER);
   if (!userId && !email && process.env.NODE_ENV === "development") {
-    const localUserId = process.env.LOCAL_DEV_USER_ID;
-    const localEmail = process.env.LOCAL_DEV_USER_EMAIL;
-    const localName = process.env.LOCAL_DEV_USER_NAME;
+    const localEnv = env as Cloudflare.Env;
+    const localUserId = localEnv.LOCAL_DEV_USER_ID || process.env.LOCAL_DEV_USER_ID;
+    const localEmail = localEnv.LOCAL_DEV_USER_EMAIL || process.env.LOCAL_DEV_USER_EMAIL;
+    const localName = localEnv.LOCAL_DEV_USER_NAME || process.env.LOCAL_DEV_USER_NAME;
 
     if (localUserId && localEmail && localName) {
       return {

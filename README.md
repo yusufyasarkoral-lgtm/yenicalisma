@@ -115,6 +115,14 @@ Replace the filename with the pending migration and `DB` with your D1 binding na
 - `npm run build`: build the deployable Sites artifact
 - `npm run start`: preview the built Worker locally with D1/R2 support
 - `npm run db:generate`: generate Drizzle migrations after schema changes
+- `npm run test:api`: run the synthetic API-logic tests
+
+## Local chatbot key
+
+The Gemini key is not hard-coded. The quote-request endpoint reads the private
+Cloudflare Worker binding `GEMINI_API_KEY`. For local development, set a real
+key in the ignored `.env` file. Keep the key out of source files and Git.
+Hosted environments must set the same value as a secret binding.
 
 When using the Sites plugin, follow its skill instructions for installation, builds, and publishing. These npm commands remain available for standalone use.
 

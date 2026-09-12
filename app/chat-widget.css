@@ -1,0 +1,30 @@
+.chat-launch {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 40;
+  border-radius: 999px;
+  box-shadow: 0 12px 30px #145bdf55;
+}
+
+.chat-widget-layout {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 40;
+  display: block;
+  width: min(440px, calc(100vw - 32px));
+}
+
+.chat-widget-layout .portal-side { display: none; }
+.chat-widget-layout .chat-card { box-shadow: 0 20px 55px #17243a33; }
+.chat-widget-layout .messages { min-height: 320px; max-height: min(52vh, 470px); }
+.chat-head-actions { display: flex; align-items: center; gap: 4px; }
+.chat-head-actions button { color: #62728b; }
+
+@media (max-width: 560px) {
+  .chat-launch { right: 16px; bottom: 16px; }
+  .chat-launch span { display: none; }
+  .chat-widget-layout { right: 16px; bottom: 16px; width: calc(100vw - 32px); }
+  .chat-widget-layout .messages { min-height: 280px; max-height: 52vh; }
+}

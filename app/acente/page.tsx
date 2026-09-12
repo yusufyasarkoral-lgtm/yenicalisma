@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import "@/app/chat-widget.css";
 import {
   ArrowLeft,
-  Check,
-  FileUp,
   MessageCircle,
-  Paperclip,
   Send,
   ShieldCheck,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,12 +38,16 @@ type SessionStatus =
   | "ready"
   | "error";
 
-type AgencySession = {
-  authenticatedUserId: string;
-  agencyUserId: string;
-  agencyId: string;
-  role: string;
-};
+type ApiError = { error?: string };
+type CreatedRequest = { id: string; assistantMessage: string } & ApiError;
+type ChatResponse = {
+  status: string;
+  fields?: State["fields"];
+  missing?: State["missing"];
+  branch?: { key: string; label: string } | null;
+  summary?: string;
+  assistantMessage: string;
+} & ApiError;
 
 const INITIAL_MESSAGE =
   "Merhaba! Hangi sigorta branşı için teklif almak istediğinizi ve bildiğiniz detayları yazabilirsiniz.";
@@ -51,8 +55,6 @@ const INITIAL_MESSAGE =
 export default function AgencyPortal() {
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("loading");
-
-  const [session, setSession] = useState<AgencySession | null>(null);
 
   const [onboardingAgencyName, setOnboardingAgencyName] =
     useState("");
@@ -72,17 +74,11 @@ export default function AgencyPortal() {
   const [busy, setBusy] =
     useState(false);
 
-  const [newQuoteBusy, setNewQuoteBusy] =
+  const [chatOpen, setChatOpen] =
     useState(false);
-
-  const [files, setFiles] =
-    useState<File[]>([]);
 
   const [error, setError] =
     useState("");
-
-  const fileRef =
-    useRef<HTMLInputElement>(null);
 
   async function loadAgencySession() {
     setSessionStatus("loading");
@@ -94,19 +90,17 @@ export default function AgencyPortal() {
         cache: "no-store",
       });
 
-      const data: any = await response.json();
+      const data = await response.json() as ApiError;
 
       if (
         response.status === 403 &&
         data.error === "onboarding_required"
       ) {
-        setSession(null);
         setSessionStatus("onboarding_required");
         return;
       }
 
       if (!response.ok) {
-        setSession(null);
         setSessionStatus("error");
 
         if (response.status === 401) {
@@ -123,17 +117,16 @@ export default function AgencyPortal() {
         return;
       }
 
-      setSession(data);
       setSessionStatus("ready");
     } catch {
-      setSession(null);
       setSessionStatus("error");
       setError("Acente oturumu yüklenemedi.");
     }
   }
 
   useEffect(() => {
-    void loadAgencySession();
+    const timer = window.setTimeout(() => void loadAgencySession(), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -185,7 +178,7 @@ export default function AgencyPortal() {
           return;
         }
 
-        const data: any = await response.json();
+        const data = await response.json() as State;
 
         if (cancelled) {
           return;
@@ -193,25 +186,13 @@ export default function AgencyPortal() {
 
         setState(data);
 
-        setMessages(
-          data.messages.map((message: any) => ({
-            role:
-              message.role === "user"
-                ? "user"
-                : "bot",
+        const restoredMessages = data.messages.map((message) => ({
+            role: message.role === "user" ? "user" as const : "bot" as const,
             content: message.content,
-          })),
+          }));
+        setMessages(
+          restoredMessages.length ? restoredMessages : [{ role: "bot", content: INITIAL_MESSAGE }],
         );
-
-        if (data.ai_summary) {
-          setMessages((current) => [
-            ...current,
-            {
-              role: "bot",
-              content: data.ai_summary,
-            },
-          ]);
-        }
       } catch {
         if (!cancelled) {
           setError(
@@ -254,7 +235,7 @@ export default function AgencyPortal() {
         },
       );
 
-      const data: any = await response.json();
+      const data = await response.json() as ApiError;
 
       if (!response.ok) {
         throw new Error(
@@ -309,8 +290,8 @@ export default function AgencyPortal() {
             body: JSON.stringify({}),
           });
 
-        const created: any =
-          await createResponse.json();
+        const created =
+          await createResponse.json() as CreatedRequest;
 
         if (!createResponse.ok) {
           throw new Error(
@@ -355,7 +336,7 @@ export default function AgencyPortal() {
         },
       );
 
-      const data: any = await response.json();
+      const data = await response.json() as ChatResponse;
 
       if (!response.ok) {
         throw new Error(
@@ -403,116 +384,20 @@ export default function AgencyPortal() {
       );
 
       setText(content);
+      setMessages((current) => {
+        const index = current.map((message, position) =>
+          message.role === "user" && message.content === content ? position : -1,
+        ).lastIndexOf(current.length - 1);
+        return index === -1 ? current : current.filter((_, position) => position !== index);
+      });
     } finally {
       setBusy(false);
     }
   }
 
-  async function createNewQuote() {
-    if (newQuoteBusy) {
-      return;
-    }
-
-    setNewQuoteBusy(true);
-    setError("");
-
-    try {
-      const response = await fetch(
-        "/api/quote-requests",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({}),
-        },
-      );
-
-      const created: any =
-        await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          created.error ||
-            "Yeni teklif talebi oluşturulamadı.",
-        );
-      }
-
-      localStorage.setItem(
-        "quote-request-id",
-        created.id,
-      );
-
-      setState({
-        id: created.id,
-        status: "collecting_information",
-        branch_label: "",
-        fields: {},
-        missing: {
-          required: [],
-          recommended: [],
-        },
-        ai_summary: "",
-        messages: [],
-      });
-
-      setMessages([
-        {
-          role: "bot",
-          content: INITIAL_MESSAGE,
-        },
-      ]);
-
-      setText("");
-      setFiles([]);
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Yeni teklif talebi oluşturulamadı.",
-      );
-    } finally {
-      setNewQuoteBusy(false);
-    }
-  }
-
-  async function upload(
-    list: FileList | null,
-  ) {
-    if (!list || !state) {
-      return;
-    }
-
-    setFiles([...list]);
-
-    for (const file of [...list]) {
-      const form = new FormData();
-
-      form.append("quoteId", state.id);
-      form.append("file", file);
-      form.append(
-        "category",
-        "Teklif belgesi",
-      );
-      form.append(
-        "source",
-        "Acente portalı",
-      );
-
-      await fetch("/api/documents", {
-        method: "POST",
-        body: form,
-      });
-    }
-  }
-
   const progress = state
-    ? state.status === "submitted"
+    ? state.status === "ready_for_review"
       ? 100
-      : state.status ===
-          "awaiting_confirmation"
-        ? 90
         : Math.max(
             10,
             100 -
@@ -528,7 +413,7 @@ export default function AgencyPortal() {
     return (
       <main className="agency-page">
         <header className="agency-top">
-          <a
+          <Link
             className="brand"
             href="/"
           >
@@ -539,7 +424,7 @@ export default function AgencyPortal() {
             <span className="brand-light">
               masası
             </span>
-          </a>
+          </Link>
 
           <span>ACENTE PORTALI</span>
         </header>
@@ -567,7 +452,7 @@ export default function AgencyPortal() {
     return (
       <main className="agency-page">
         <header className="agency-top">
-          <a
+          <Link
             className="brand"
             href="/"
           >
@@ -578,7 +463,7 @@ export default function AgencyPortal() {
             <span className="brand-light">
               masası
             </span>
-          </a>
+          </Link>
 
           <span>ACENTE PORTALI</span>
         </header>
@@ -658,7 +543,7 @@ export default function AgencyPortal() {
     return (
       <main className="agency-page">
         <header className="agency-top">
-          <a
+          <Link
             className="brand"
             href="/"
           >
@@ -669,7 +554,7 @@ export default function AgencyPortal() {
             <span className="brand-light">
               masası
             </span>
-          </a>
+          </Link>
 
           <span>ACENTE PORTALI</span>
         </header>
@@ -701,7 +586,7 @@ export default function AgencyPortal() {
   return (
     <main className="agency-page">
       <header className="agency-top">
-        <a
+        <Link
           className="brand"
           href="/"
         >
@@ -712,19 +597,20 @@ export default function AgencyPortal() {
           <span className="brand-light">
             masası
           </span>
-        </a>
+        </Link>
 
         <span>ACENTE PORTALI</span>
       </header>
 
       <section className="agency-shell">
-        <a
-          href="/"
+        <Button
+          variant="ghost"
           className="back-link"
+          onClick={() => window.location.assign("/panel")}
         >
           <ArrowLeft size={16} />
           Broker ekranına dön
-        </a>
+        </Button>
 
         <div className="agency-intro">
           <span className="portal-icon">
@@ -751,7 +637,7 @@ export default function AgencyPortal() {
           </div>
         </div>
 
-        <div className="agency-layout">
+        {chatOpen && <div className="agency-layout chat-widget-layout">
           <section className="chat-card">
             <div className="chat-head">
               <div>
@@ -764,7 +650,17 @@ export default function AgencyPortal() {
                 </span>
               </div>
 
-              <b>{progress}%</b>
+              <div className="chat-head-actions">
+                <b>{progress}%</b>
+                <Button
+                  aria-label="Sohbeti kapat"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setChatOpen(false)}
+                >
+                  <X size={18} />
+                </Button>
+              </div>
             </div>
 
             <div className="chat-progress">
@@ -795,59 +691,23 @@ export default function AgencyPortal() {
               )}
             </div>
 
-            {state?.status ===
-            "submitted" ? (
-              <div className="success-area">
-                <Check size={20} />
+            <div className="chat-compose">
+              <Input
+                value={text}
+                disabled={busy}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void send()}
+                placeholder="Mesajınızı yazın…"
+              />
 
-                <span>
-                  Talep broker
-                  değerlendirmesine
-                  iletildi
-                </span>
-
-                <Button
-                  variant="outline"
-                  disabled={newQuoteBusy}
-                  onClick={() =>
-                    void createNewQuote()
-                  }
-                >
-                  {newQuoteBusy
-                    ? "Oluşturuluyor…"
-                    : "Yeni teklif oluştur"}
-                </Button>
-              </div>
-            ) : (
-              <div className="chat-compose">
-                <Input
-                  value={text}
-                  disabled={busy}
-                  onChange={(e) =>
-                    setText(
-                      e.target.value,
-                    )
-                  }
-                  onKeyDown={(e) =>
-                    e.key === "Enter" &&
-                    void send()
-                  }
-                  placeholder="Mesajınızı yazın…"
-                />
-
-                <Button
-                  size="icon"
-                  disabled={
-                    busy || !text.trim()
-                  }
-                  onClick={() =>
-                    void send()
-                  }
-                >
-                  <Send size={17} />
-                </Button>
-              </div>
-            )}
+              <Button
+                size="icon"
+                disabled={busy || !text.trim()}
+                onClick={() => void send()}
+              >
+                <Send size={17} />
+              </Button>
+            </div>
 
             {error && (
               <p className="portal-error">
@@ -864,19 +724,14 @@ export default function AgencyPortal() {
               </strong>
 
               <p>
-                {state?.status ===
-                "awaiting_confirmation"
-                  ? "Özet hazır; onayınızı bekliyoruz."
-                  : state?.status ===
-                      "submitted"
-                    ? "Broker değerlendirmesine iletildi."
-                    : "Eksik bilgiler konuşarak tamamlanıyor."}
+                {state?.status === "ready_for_review"
+                  ? "Özet hazır; gerekli bilgileri düzeltebilirsiniz."
+                  : "Eksik bilgiler konuşarak tamamlanıyor."}
               </p>
             </div>
 
             {state?.ai_summary &&
-              state.status ===
-                "awaiting_confirmation" && (
+              state.status === "ready_for_review" && (
                 <div className="portal-note">
                   <strong>
                     Teklif özeti
@@ -893,48 +748,13 @@ export default function AgencyPortal() {
                 </div>
               )}
 
-            <div className="upload-card">
-              <FileUp size={22} />
-
-              <h2>Belge ekle</h2>
-
-              <p>
-                PDF veya görsel olarak
-                belge ekleyebilirsiniz.
-              </p>
-
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/pdf,image/png,image/jpeg,image/webp"
-                multiple
-                hidden
-                onChange={(e) =>
-                  void upload(
-                    e.target.files,
-                  )
-                }
-              />
-
-              <Button
-                variant="outline"
-                disabled={!state}
-                onClick={() =>
-                  fileRef.current?.click()
-                }
-              >
-                <Paperclip size={16} />
-                Belge seç
-              </Button>
-
-              {files.map((file) => (
-                <p key={file.name}>
-                  {file.name}
-                </p>
-              ))}
-            </div>
           </aside>
-        </div>
+        </div>}
+
+        {!chatOpen && <Button className="chat-launch" onClick={() => setChatOpen(true)}>
+          <MessageCircle size={22} />
+          <span>Teklif asistanı</span>
+        </Button>}
       </section>
     </main>
   );

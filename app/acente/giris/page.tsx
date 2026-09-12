@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent } from "react";
+import Link from "next/link";
 import { ArrowLeft, ArrowRight, Building2, ShieldCheck, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -14,11 +15,11 @@ export default function AgencySignInPage() {
   return (
     <main className="agency-login-page">
       <header className="agency-login-top">
-        <a className="brand" href="/">
+        <Link className="brand" href="/">
           <span className="brand-icon"><ShieldCheck size={22} /></span>
           teklif<span className="brand-light">masası</span>
-        </a>
-        <a className="agency-login-back" href="/"><ArrowLeft size={16} /> Broker alanı</a>
+        </Link>
+        <Link className="agency-login-back" href="/"><ArrowLeft size={16} /> Broker alanı</Link>
       </header>
       <section className="agency-login-shell" aria-labelledby="agency-login-title">
         <div className="agency-login-copy">
@@ -39,7 +40,7 @@ export default function AgencySignInPage() {
           <div className="agency-login-options"><label><input type="checkbox" /> Beni hatırla</label><button type="button">Şifremi unuttum</button></div>
           <Button type="submit" variant="outline" className="agency-login-button">Giriş yap <ArrowRight size={17} /></Button>
           <div className="agency-login-divider"><span>veya</span></div>
-          <Button asChild className="agency-login-button"><a href="/acente">Şimdilik direkt giriş yap <ArrowRight size={17} /></a></Button>
+          <Button asChild className="agency-login-button"><Link href="/acente">Şimdilik direkt giriş yap <ArrowRight size={17} /></Link></Button>
           <small>Şifreli giriş altyapısı yakında aktif olacak.</small>
         </form>
       </section>
