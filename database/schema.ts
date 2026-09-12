@@ -1,5 +1,5 @@
-import {sqliteTable,text,real,uniqueIndex} from 'drizzle-orm/sqlite-core';
-export const quotes=sqliteTable('quotes',{id:text('id').primaryKey(),agency:text('agency').notNull(),customer:text('customer').notNull(),insurer:text('insurer').notNull(),branch:text('branch').notNull(),amount:real('amount').notNull(),status:text('status').notNull(),notes:text('notes').notNull().default(''),createdAt:text('createdAt').notNull()});
+import {sqliteTable,text,real,uniqueIndex,primaryKey} from 'drizzle-orm/sqlite-core';
+export const quotes=sqliteTable('quotes',{id:text('id').primaryKey(),ownerId:text('owner_id').notNull(),agency:text('agency').notNull(),customer:text('customer').notNull(),insurer:text('insurer').notNull(),branch:text('branch').notNull(),amount:real('amount').notNull(),status:text('status').notNull(),notes:text('notes').notNull().default(''),createdAt:text('createdAt').notNull()},t=>[uniqueIndex('idx_quotes_owner_created').on(t.ownerId,t.createdAt)]);
 
 export const documents=sqliteTable('documents',{
  id:text('id').primaryKey(),quoteId:text('quote_id').notNull().references(()=>quotes.id),
@@ -12,5 +12,5 @@ export const documents=sqliteTable('documents',{
  createdAt:text('created_at').notNull(),
 },t=>[uniqueIndex('idx_documents_quote_hash').on(t.quoteId,t.contentHash)]);
 export const documentRules=sqliteTable('document_rules',{
- branch:text('branch').primaryKey(),categories:text('categories').notNull(),updatedAt:text('updated_at').notNull(),
-});
+ ownerId:text('owner_id').notNull(),branch:text('branch').notNull(),categories:text('categories').notNull(),updatedAt:text('updated_at').notNull(),
+},t=>[primaryKey({columns:[t.ownerId,t.branch]})]);
