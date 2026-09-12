@@ -42,7 +42,12 @@ export async function POST(request:Request){
         text:{format:{type:'json_schema',name:'broker_validation',strict:true,schema:{type:'object',additionalProperties:false,properties:{valid:{type:'boolean'},normalizedValue:{type:['string','null']},assistantMessage:{type:'string'}},required:['valid','normalizedValue','assistantMessage']}}}
       })
     });
-    if(!response.ok){console.error('Broker model request failed',response.status);return Response.json({error:'Broker asistanı şu an yanıt veremiyor.'},{status:503})}
+    if(!response.ok){
+      const failure=await response.json().catch(()=>null) as {error?:{code?:string}}|null;
+      console.error('Broker model request failed',response.status,failure?.error?.code);
+      if(failure?.error?.code==='credit_balance_exhausted')return Response.json({error:'Broker asistanının API kullanım bakiyesi yok. Yönetici, OpenAI Platform’dan kullanım bakiyesi eklemeli.'},{status:503});
+      return Response.json({error:'Broker asistanı şu an yanıt veremiyor.'},{status:503})
+    }
     const payload=await response.json() as {output_text?:string};
     const reply=cleanReply(JSON.parse(payload.output_text||''));
     if(!reply||!reply.assistantMessage)return Response.json({error:'Broker asistanından geçerli yanıt alınamadı.'},{status:503});
