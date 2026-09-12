@@ -1,0 +1,16 @@
+export type FieldDefinition={key:string;label:string;description:string;type:'text'|'money'|'date'|'boolean'|'select';required:'required'|'recommended'|'optional';priority:number;validation?:string};
+export type BranchDefinition={key:string;label:string;aliases:string[];fields:FieldDefinition[]};
+const common:FieldDefinition[]=[
+  {key:'insured_name',label:'Sigortalı / şirket unvanı',description:'Teklif talebinin sigortalısı',type:'text',required:'required',priority:1},
+  {key:'risk_address',label:'Risk adresi',description:'Sigortalanacak riskin açık adresi veya il/ilçe',type:'text',required:'required',priority:2},
+  {key:'activity',label:'Faaliyet konusu',description:'Firmanın veya riskin faaliyeti',type:'text',required:'recommended',priority:4},
+  {key:'claims_history',label:'Hasar geçmişi',description:'Bilinmiyorsa unknown olarak kalır',type:'text',required:'recommended',priority:7}
+];
+export const branchDefinitions:BranchDefinition[]=[
+ {key:'workplace_fire',label:'İşyeri / Yangın',aliases:['yangın','fabrika','işyeri','iş yeri'],fields:[...common,{key:'building_value',label:'Bina bedeli',description:'TL sigorta bedeli',type:'money',required:'required',priority:3},{key:'machinery_value',label:'Makine bedeli',description:'TL sigorta bedeli',type:'money',required:'recommended',priority:5},{key:'stock_value',label:'Emtia bedeli',description:'TL sigorta bedeli',type:'money',required:'recommended',priority:5},{key:'fire_protection',label:'Yangın koruma sistemleri',description:'Sprinkler, alarm, tüp vb.; bilinmiyorsa unknown',type:'text',required:'recommended',priority:6}]},
+ {key:'kasko',label:'Kasko',aliases:['kasko'],fields:[{key:'insured_name',label:'Sigortalı',description:'Araç sahibi',type:'text',required:'required',priority:1},{key:'plate',label:'Plaka',description:'Araç plakası',type:'text',required:'required',priority:2,validation:'plate'},{key:'vehicle_make_model',label:'Marka / model',description:'Araç bilgisi',type:'text',required:'recommended',priority:3}]},
+ {key:'traffic',label:'Trafik',aliases:['trafik'],fields:[{key:'insured_name',label:'Sigortalı',description:'Araç sahibi',type:'text',required:'required',priority:1},{key:'plate',label:'Plaka',description:'Araç plakası',type:'text',required:'required',priority:2,validation:'plate'}]},
+ {key:'health',label:'Sağlık',aliases:['sağlık','tamamlayıcı sağlık','tss'],fields:[{key:'insured_name',label:'Sigortalı',description:'Kişi veya kurum',type:'text',required:'required',priority:1},{key:'birth_date',label:'Doğum tarihi',description:'Sigortalının doğum tarihi',type:'date',required:'required',priority:2},{key:'coverage_type',label:'Talep edilen teminat',description:'Özel sağlık veya tamamlayıcı sağlık',type:'select',required:'required',priority:3}]}
+];
+export const getBranch=(key:string)=>branchDefinitions.find(x=>x.key===key);
+export const missingFields=(branchKey:string,values:Record<string,unknown>)=>{const b=getBranch(branchKey);if(!b)return {required:[],recommended:[]};const open=(level:'required'|'recommended')=>b.fields.filter(f=>f.required===level&&(!values[f.key]||values[f.key]==='unknown')).sort((a,b)=>a.priority-b.priority).map(f=>f.key);return {required:open('required'),recommended:open('recommended')}};

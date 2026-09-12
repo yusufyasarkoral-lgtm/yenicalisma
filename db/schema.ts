@@ -14,3 +14,4 @@ export const documents=sqliteTable('documents',{
 export const documentRules=sqliteTable('document_rules',{
  branch:text('branch').primaryKey(),categories:text('categories').notNull(),updatedAt:text('updated_at').notNull(),
 });
+export const quoteRequests=sqliteTable('quote_requests',{id:text('id').primaryKey(),agency:text('agency').notNull(),branchKey:text('branch_key').notNull(),branchLabel:text('branch_label').notNull(),branchConfidence:real('branch_confidence').notNull(),status:text('status').notNull(),collectedFields:text('collected_fields').notNull(),missingRequiredFields:text('missing_required_fields').notNull(),missingRecommendedFields:text('missing_recommended_fields').notNull(),aiSummary:text('ai_summary').notNull(),confirmationRequested:real('confirmation_requested').notNull(),confirmedAt:text('confirmed_at').notNull(),quoteId:text('quote_id').notNull(),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull()});
