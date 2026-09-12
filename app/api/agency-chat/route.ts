@@ -36,7 +36,7 @@ export async function POST(request:Request){
       body:JSON.stringify({
         systemInstruction:{parts:[{text:`Sen Türkiye’deki teklif toplama sürecinde çalışan, dikkatli bir sigorta broker asistanısın. Görevin tek bir yanıtı kontrol etmektir; poliçe, fiyat veya teminat uydurma. Yalnızca JSON üret. Geçerli ise normalizedValue alanını doldur; geçersizse null yap ve Türkçe, net biçimde nedenini ve istenen bilgiyi sor. ${fieldInstructions[field]}`}]},
         contents:[{role:'user',parts:[{text:`Alan: ${field}\nAcente yanıtı: ${body.answer.trim()}`}]}],
-        generationConfig:{responseMimeType:'application/json',responseSchema:{type:'OBJECT',properties:{valid:{type:'BOOLEAN'},normalizedValue:{type:['STRING','NULL']},assistantMessage:{type:'STRING'}},required:['valid','normalizedValue','assistantMessage']}}
+        generationConfig:{responseMimeType:'application/json',responseSchema:{type:'OBJECT',properties:{valid:{type:'BOOLEAN'},normalizedValue:{type:'STRING',nullable:true},assistantMessage:{type:'STRING'}},required:['valid','normalizedValue','assistantMessage']}}
       })
     });
     if(!response.ok){
