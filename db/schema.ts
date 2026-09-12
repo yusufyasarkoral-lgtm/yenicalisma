@@ -2,7 +2,7 @@ import {sqliteTable,text,real,uniqueIndex} from 'drizzle-orm/sqlite-core';
 export const quotes=sqliteTable('quotes',{id:text('id').primaryKey(),agency:text('agency').notNull(),customer:text('customer').notNull(),insurer:text('insurer').notNull(),branch:text('branch').notNull(),amount:real('amount').notNull(),status:text('status').notNull(),notes:text('notes').notNull().default(''),createdAt:text('createdAt').notNull()});
 
 export const documents=sqliteTable('documents',{
- id:text('id').primaryKey(),quoteId:text('quote_id').notNull().references(()=>quotes.id),
+ id:text('id').primaryKey(),quoteId:text('quote_id').references(()=>quotes.id),quoteRequestId:text('quote_request_id'),
  filename:text('filename').notNull(),mime:text('mime').notNull(),size:real('size').notNull(),
  objectKey:text('object_key').notNull(),contentHash:text('content_hash').notNull(),
  category:text('category').notNull().default('Diğer'),source:text('source').notNull().default('Yükleme'),
