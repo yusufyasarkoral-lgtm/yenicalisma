@@ -26,30 +26,26 @@ export async function POST(request:Request){
   let body:{field?:unknown;answer?:unknown};
   try{body=await request.json()}catch{return Response.json({error:'Geçersiz istek'},{status:400})}
   if(!fields.includes(body.field as Field)||typeof body.answer!=='string'||!body.answer.trim()||body.answer.length>500)return Response.json({error:'Cevabınızı kontrol edin'},{status:400});
-  const apiKey=(env as Cloudflare.Env).OPENAI_API_KEY;
+  const apiKey=(env as Cloudflare.Env).GEMINI_API_KEY;
   if(!apiKey)return Response.json({error:'Yapay zekâ broker asistanı henüz bağlanmadı.'},{status:503});
   const field=body.field as Field;
   try{
-    const response=await fetch('https://api.openai.com/v1/responses',{
+    const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+      headers:{'Content-Type':'application/json','x-goog-api-key':apiKey},
       body:JSON.stringify({
-        model:'gpt-4.1-mini',
-        input:[
-          {role:'system',content:[{type:'input_text',text:`Sen Türkiye’deki teklif toplama sürecinde çalışan, dikkatli bir sigorta broker asistanısın. Görevin tek bir yanıtı kontrol etmektir; poliçe, fiyat veya teminat uydurma. Yanıtı yalnızca aşağıdaki JSON şemasına uygun üret. Geçerli ise normalizedValue alanını doldur; geçersizse null yap ve Türkçe, net biçimde nedenini ve istenen bilgiyi sor. ${fieldInstructions[field]}`}]},
-          {role:'user',content:[{type:'input_text',text:`Alan: ${field}\nAcente yanıtı: ${body.answer.trim()}`}]}
-        ],
-        text:{format:{type:'json_schema',name:'broker_validation',strict:true,schema:{type:'object',additionalProperties:false,properties:{valid:{type:'boolean'},normalizedValue:{type:['string','null']},assistantMessage:{type:'string'}},required:['valid','normalizedValue','assistantMessage']}}}
+        systemInstruction:{parts:[{text:`Sen Türkiye’deki teklif toplama sürecinde çalışan, dikkatli bir sigorta broker asistanısın. Görevin tek bir yanıtı kontrol etmektir; poliçe, fiyat veya teminat uydurma. Yalnızca JSON üret. Geçerli ise normalizedValue alanını doldur; geçersizse null yap ve Türkçe, net biçimde nedenini ve istenen bilgiyi sor. ${fieldInstructions[field]}`}]},
+        contents:[{role:'user',parts:[{text:`Alan: ${field}\nAcente yanıtı: ${body.answer.trim()}`}]}],
+        generationConfig:{responseMimeType:'application/json',responseSchema:{type:'OBJECT',properties:{valid:{type:'BOOLEAN'},normalizedValue:{type:['STRING','NULL']},assistantMessage:{type:'STRING'}},required:['valid','normalizedValue','assistantMessage']}}
       })
     });
     if(!response.ok){
       const failure=await response.json().catch(()=>null) as {error?:{code?:string}}|null;
       console.error('Broker model request failed',response.status,failure?.error?.code);
-      if(failure?.error?.code==='credit_balance_exhausted')return Response.json({error:'Broker asistanının API kullanım bakiyesi yok. Yönetici, OpenAI Platform’dan kullanım bakiyesi eklemeli.'},{status:503});
       return Response.json({error:'Broker asistanı şu an yanıt veremiyor.'},{status:503})
     }
-    const payload=await response.json() as {output_text?:string};
-    const reply=cleanReply(JSON.parse(payload.output_text||''));
+    const payload=await response.json() as {candidates?:Array<{content?:{parts?:Array<{text?:string}>}}>};
+    const reply=cleanReply(JSON.parse(payload.candidates?.[0]?.content?.parts?.[0]?.text||''));
     if(!reply||!reply.assistantMessage)return Response.json({error:'Broker asistanından geçerli yanıt alınamadı.'},{status:503});
     return Response.json(reply);
   }catch(error){console.error('Broker assistant failed',error);return Response.json({error:'Broker asistanı şu an yanıt veremiyor.'},{status:503})}
